@@ -1,0 +1,64 @@
+# Deploy each branch to its own copy on the VPS:
+#   push to dev   → https://dev.sssfurniture.co.in   (/opt/sss-shop/dev)
+#   push to prod  → https://sssfurniture.co.in       (/opt/sss-shop/prod)   ← merge a pull request from dev
+# Needs three repository secrets (Settings → Secrets and variables → Actions):
+#   VPS_HOST         189.72.149.180
+#   VPS_SSH_KEY      private key whose public half is in /home/deploy/.ssh/authorized_keys
+#   VPS_KNOWN_HOSTS  the server's host key line (ssh-keyscan 189.72.149.180)
+name: Deploy
+
+on:
+  push:
+    branches: [dev, prod]
+  workflow_dispatch:
+
+# One deploy per branch at a time; a newer push waits instead of cancelling a half-finished release.
+concurrency:
+  group: deploy-${{ github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy ${{ github.ref_name }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      TARGET: ${{ github.ref_name }}
+      HAS_KEY: ${{ secrets.VPS_SSH_KEY != '' && secrets.VPS_HOST != '' }}
+    steps:
+      - name: Check the server key is set
+        if: env.HAS_KEY != 'true'
+        run: echo "::notice::Deploy skipped. Add VPS_HOST, VPS_SSH_KEY and VPS_KNOWN_HOSTS under Settings → Secrets and variables → Actions."
+
+      - uses: actions/checkout@v4
+        if: env.HAS_KEY == 'true'
+
+      - name: SSH setup
+        if: env.HAS_KEY == 'true'
+        run: |
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "${{ secrets.VPS_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+
+      - name: Upload code
+        if: env.HAS_KEY == 'true'
+        # Server-only files (settings, uploads, installed packages, builds) are excluded, so --delete never touches them.
+        run: |
+          rsync -az --delete \
+            --exclude '.git/' --exclude '.github/' \
+            --exclude 'node_modules/' --exclude '.next/' --exclude 'dist/' \
+            --exclude 'backend/storage/' --exclude '.env' --exclude '.env.local' \
+            -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes" \
+            ./ "deploy@${{ secrets.VPS_HOST }}:/opt/sss-shop/$TARGET/"
+
+      - name: Build and restart
+        if: env.HAS_KEY == 'true'
+        run: ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes "deploy@${{ secrets.VPS_HOST }}" "bash -l /opt/sss-shop/$TARGET/backend/deploy/release.sh"
+
+      - name: Check the site answers
+        if: env.HAS_KEY == 'true'
+        run: |
+          if [ "$TARGET" = prod ]; then url=https://sssfurniture.co.in/api/health; else url=https://dev.sssfurniture.co.in/api/health; fi
+          for i in $(seq 1 10); do curl -fsS "$url" && exit 0; sleep 6; done
+          echo "::warning::$url did not answer yet (HTTPS may not be set up for this address)."

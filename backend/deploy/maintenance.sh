@@ -3,7 +3,7 @@
 # Keeps the Next.js resized-image cache under its 15 GB budget. (PM2 logs are rotated by pm2-logrotate.)
 set -euo pipefail
 
-APP_DIR="${APP_DIR:-/opt/sss-shop}"
+APP_DIR="${APP_DIR:-/opt/sss-shop/prod}"
 CACHE="$APP_DIR/storefront/.next/cache/images"
 LIMIT_GB="${IMAGE_CACHE_GB:-15}"
 

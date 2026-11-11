@@ -238,8 +238,10 @@ Rules:
 | File | Purpose |
 | --- | --- |
 | `release.sh` | Builds and starts or updates everything in the right order, with a database backup first |
-| `ecosystem.config.cjs` | PM2: `shop-api` :4100, `shop-jobs`, `shop-storefront` :3100, `shop-admin` :3101, all on 127.0.0.1 (the CRM keeps 3000/4000) |
-| `nginx/sss-shop.conf` | `shop.` and `shopadmin.sssfurniture.co.in`: `/api` → API, `/media` from disk, `/_private` internal only, rate limits, webhooks unlimited |
+| `ecosystem.config.cjs` | PM2 for one copy: live `prod-*` (4100/3100/3101) or test `dev-*` (4200/3200/3201), chosen by folder |
+| `nginx/sss-shop.conf` | Live `sssfurniture.co.in` + `shopadmin.`, test `dev.` + `devadmin.`: `/api` → API, `/media` from disk, `/_private` internal only, rate limits |
+| `provision.sh` | One-time server setup (run on 189.72.149.180) |
+| `.github/workflows/deploy.yml` | Push to `dev` → test site; merge to `prod` → live site |
 | `env/*.env` | Production settings templates for the three apps |
 | `backup.sh` | `pg_dump` every 6 hours, checked, kept 14 days |
 | `pull-backup.sh` | Runs on your computer: pulls dumps and all media with rsync (no cloud storage) |

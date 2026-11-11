@@ -3,7 +3,7 @@
 # Keeps 14 days of dumps in $BACKUP_DIR; your own computer pulls them with pull-backup.sh.
 set -euo pipefail
 
-APP_DIR="${APP_DIR:-/opt/sss-shop}"
+APP_DIR="${APP_DIR:-/opt/sss-shop/prod}"
 BACKUP_DIR="${BACKUP_DIR:-/var/backups/sss-shop}"
 KEEP_DAYS="${KEEP_DAYS:-14}"
 

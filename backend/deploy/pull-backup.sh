@@ -8,7 +8,7 @@ set -euo pipefail
 
 VPS="${VPS:?set VPS=user@your-server-ip}"
 DEST="${DEST:-$HOME/sss-shop-backup}"
-APP_DIR="${APP_DIR:-/opt/sss-shop}"
+APP_DIR="${APP_DIR:-/opt/sss-shop/prod}"
 BACKUP_DIR="${BACKUP_DIR:-/var/backups/sss-shop}"
 
 mkdir -p "$DEST/db" "$DEST/storage"
