@@ -12,6 +12,7 @@
     "db:seed": "tsx prisma/seed.ts",
     "db:reset": "tsx prisma/seed.ts --fresh",
     "setup:owner": "tsx prisma/create-owner.ts",
+    "staff:password": "tsx prisma/set-staff-password.ts",
     "test": "tsx --test test/*.test.ts",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
