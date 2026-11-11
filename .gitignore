@@ -1,0 +1,27 @@
+# Secrets: every real settings file stays off GitHub. Templates (*.example, backend/deploy/env/) are committed.
+.env
+.env.*
+!.env.example
+!**/.env.example
+
+# Dependencies and builds
+node_modules/
+.next/
+dist/
+out/
+*.tsbuildinfo
+next-env.d.ts
+
+# Uploads, invoices, dev mailbox, seed image cache (live data belongs on the server and in backups)
+backend/storage/
+
+# Test and screenshot output
+test-results/
+playwright-report/
+*.log
+
+# Editors and OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

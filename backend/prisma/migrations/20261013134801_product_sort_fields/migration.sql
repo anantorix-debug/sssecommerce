@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "Product" ADD COLUMN     "minPrice" INTEGER NOT NULL DEFAULT 0,
+ADD COLUMN     "soldCount" INTEGER NOT NULL DEFAULT 0;

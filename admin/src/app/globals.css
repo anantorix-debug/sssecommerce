@@ -1,0 +1,57 @@
+@import "tailwindcss";
+
+/* Admin: same brand tokens as the storefront, tuned for dense, scannable work screens. */
+@theme {
+  --color-canvas: #F4F3F0;
+  --color-surface: #FFFFFF;
+  --color-ink: #191714;
+  --color-ink-soft: #4A463F;
+  --color-muted: #7A746B;
+  --color-line: #E5E1D9;
+  --color-line-strong: #CFC8BB;
+  --color-accent: #1F4E4A;
+  --color-accent-soft: #E1ECE9;
+  --color-clay: #A9532F;
+  --color-success: #2E6B47;
+  --color-danger: #B3261E;
+  --color-warning: #8A5E00;
+  --color-info: #2F5D8A;
+  --font-sans: var(--font-inter), "Segoe UI", system-ui, sans-serif;
+  --font-display: var(--font-fraunces), Georgia, serif;
+}
+
+@layer base {
+  body {
+    background: var(--color-canvas);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-size: 0.9rem;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+  button { cursor: pointer; }
+  input, textarea, select, button { font: inherit; }
+}
+
+@layer components {
+  .tabular { font-variant-numeric: tabular-nums; }
+  .card { background: var(--color-surface); border: 1px solid var(--color-line); border-radius: 0.75rem; }
+  .skeleton {
+    background: linear-gradient(100deg, #ebe8e2 30%, #f4f2ee 50%, #ebe8e2 70%);
+    background-size: 300% 100%;
+    animation: shimmer 1.5s ease-in-out infinite;
+    border-radius: 6px;
+  }
+}
+
+@keyframes shimmer { from { background-position: 100% 0; } to { background-position: -100% 0; } }
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes slide-in { from { transform: translateX(24px); opacity: 0; } to { transform: none; opacity: 1; } }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}

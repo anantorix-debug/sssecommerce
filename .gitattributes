@@ -1,0 +1,7 @@
+* text=auto
+# Run on the Linux server: always LF, even when edited on Windows.
+*.sh text eol=lf
+backend/deploy/** text eol=lf
+*.png binary
+*.jpg binary
+*.glb binary
