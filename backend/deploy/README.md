@@ -82,7 +82,9 @@ ssh deploy@189.72.149.180
 cd /opt/sss-shop/prod/backend && npm run setup:owner -- you@sssfurniture.co.in "Yogeshwaran S"
 ```
 
-It prints a one-time password; the first sign-in asks you to scan a QR code with an authenticator app. **Never run `npm run db:seed` on the live copy.** The test copy may be seeded with demo products: `cd /opt/sss-shop/dev/backend && npm run db:seed`.
+It prints a one-time password; the first sign-in asks you to scan a QR code with an authenticator app. Both copies already have their owner account (`owner@sssfurniture.co.in`) and launch content: home page, policies, About, FAQ and footer menu (`npm run db:seed -- --content-only`). Edit them in the admin under Content.
+
+**Never load the demo data (`npm run db:seed`) on either copy.** Both admins are on the public internet, and the demo creates admin accounts whose password is in this repository. The seed refuses to run on a production server for that reason.
 
 ## Backups
 

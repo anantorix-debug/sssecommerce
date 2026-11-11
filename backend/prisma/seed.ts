@@ -2,6 +2,10 @@
  * Demo data for development and review.
  *   npm run db:seed            fills an empty database
  *   npm run db:seed -- --fresh  clears this project's tables first (development only)
+ *   npm run db:seed -- --content-only   live launch: SSS home page, policies, About, FAQ and footer
+ *                                       menu only (no demo products, customers or staff); safe on live
+ * On a production server (NODE_ENV=production) the full demo seed refuses to run, because it creates
+ * demo admin accounts with a published password. For the test site only: add --allow-production.
  *
  * Photos: Unsplash (Unsplash License). 3D models: Khronos glTF Sample Assets,
  * "GlamVelvetSofa" and "SheenChair" by Wayfair (CC BY 4.0).
@@ -452,6 +456,19 @@ async function fresh() {
 }
 
 async function main() {
+  if (process.argv.includes('--content-only')) {
+    if ((await prisma.contentPage.count()) > 0) {
+      console.log('Content pages already exist; nothing changed. Edit them in the admin under Content → Pages.');
+      return;
+    }
+    await mkdir(CACHE, { recursive: true });
+    await seedContent(new Map(), true);
+    console.log('Launch content created: home page, policies, About, FAQ and footer menu. Review them in the admin under Content.');
+    return;
+  }
+  if (process.env.NODE_ENV === 'production' && !process.argv.includes('--allow-production')) {
+    throw new Error('Refusing to load demo data on a production server (it creates demo admin accounts). Use --content-only for the live site; on the test site add --allow-production.');
+  }
   const isFresh = process.argv.includes('--fresh');
   if (isFresh) {
     if (process.env.NODE_ENV === 'production') throw new Error('Refusing to clear data in production.');
@@ -671,40 +688,54 @@ function defaultDims(category: string): [number, number, number] {
   return map[category] ?? [100, 60, 80];
 }
 
-async function seedContent(productIds: Map<string, string>) {
+/**
+ * Home page, policies, About, FAQ, guides and footer menu.
+ * `launch` (live site): a home page that doesn't depend on demo rooms, collections or products,
+ * no buying guides, and a footer that only links to pages that exist on an empty store.
+ */
+async function seedContent(productIds: Map<string, string>, launch = false) {
   const hero = await image('1600210492493-0946911123ea', 'A sunlit living room with a deep brown sofa and tall windows', 'home-hero');
   const wood = await image('1611600700192-d87eaeed4f81', 'Close-up of reclaimed teak grain', 'material-wood');
   const linen = await image('1528458909336-e7a0adfed0a5', 'Stonewashed linen fabric', 'material-linen');
   const hands = await image('1497219055242-93359eeed651', 'A craftsman shaping wood with a chisel', 'material-craft');
-  const story = await image('1631396326838-de37e5f8bcbc', 'A craftsman at work in the SSS Furniture workshop', 'collection-story');
+  const story = launch ? null : await image('1631396326838-de37e5f8bcbc', 'A craftsman at work in the SSS Furniture workshop', 'collection-story');
   void productIds;
+
+  const materials = { id: 'materials', type: 'MATERIALS', data: { eyebrow: 'Made properly', title: 'What it’s made of matters', items: [
+    { title: 'Seasoned solid wood', body: 'Teak, sheesham and oak, dried for months so joints stay tight through Indian summers and monsoons.', imageKey: wood.key },
+    { title: 'Fabrics that breathe', body: 'Linen and cotton blends tested to 50,000 rubs, with covers that come off for cleaning.', imageKey: linen.key },
+    { title: 'Joined by hand', body: 'Mortise-and-tenon joints and hand-tied springs from craftspeople with decades at the bench.', imageKey: hands.key },
+  ] } };
+  const promise = { id: 'promise', type: 'PROMISE', data: { items: [
+    { title: 'Delivery on your date', body: 'Choose a delivery date once your order is confirmed.', icon: 'calendar' },
+    { title: 'Made in Salem', body: 'Teak furniture, sofas and office setups from our own workshop, in custom sizes too.', icon: 'wrench' },
+    { title: '7-day returns', body: 'If it isn’t right, we collect it and refund you after inspection.', icon: 'rotate' },
+    { title: 'Up to 5-year warranty', body: 'On frames, joints and mechanisms. Details on every product.', icon: 'shield' },
+  ] } };
+  const newsletter = { id: 'newsletter', type: 'NEWSLETTER', data: { title: 'New pieces, first', body: 'One email a month about new collections and the makers behind them. No sales spam.' } };
 
   await prisma.contentPage.create({
     data: {
       type: 'HOME', slug: 'home', title: 'Home', status: 'ACTIVE', publishedAt: new Date(),
       seoTitle: 'SSS Furniture | Teak furniture, sofas and home furnishing in Salem',
       seoDescription: 'Teak furniture, luxury and recliner sofas, home furnishing and office setups from SSS Furniture, Salem. Delivered on a date you choose and installed by our team.',
-      blocks: [
+      blocks: (launch ? [
+        { id: 'hero', type: 'HERO', data: { eyebrow: 'Quality · Trust · Comfort', title: 'Furniture made in Salem, for the way you live', subtitle: 'Teak furniture, luxury and recliner sofas, home furnishing and office setups. Made to your size in our own workshop.', imageKey: hero.key, ctaPrimary: { label: 'Shop all furniture', href: '/shop' }, ctaSecondary: { label: 'Call 93420 83981', href: 'tel:+919342083981' } } },
+        promise,
+        materials,
+        newsletter,
+      ] : [
         { id: 'hero', type: 'HERO', data: { eyebrow: 'New season · Teak and Linen', title: 'Furniture for the way you live at home', subtitle: 'Solid wood, honest fabrics and a delivery date you can plan around. Installed by our own team.', imageKey: hero.key, ctaPrimary: { label: 'Shop by room', href: '/rooms' }, ctaSecondary: { label: 'Explore collections', href: '/collections' } } },
         { id: 'rooms', type: 'ROOMS', data: { eyebrow: 'Shop by room', title: 'Start with the room', subtitle: 'Every piece is chosen to work with the others, so a room comes together without guesswork.' } },
-        { id: 'story', type: 'COLLECTION_STORY', data: { collectionSlug: 'teak-and-linen', eyebrow: 'The collection', title: 'Teak that has already lived a life', body: 'Our Teak and Linen pieces are cut from wood reclaimed from old Kerala homes, then joined by hand in our workshop in Salem. Decades of seasoning mean it won’t warp in the monsoon.', imageKey: story.key, secondaryImageKey: wood.key } },
+        { id: 'story', type: 'COLLECTION_STORY', data: { collectionSlug: 'teak-and-linen', eyebrow: 'The collection', title: 'Teak that has already lived a life', body: 'Our Teak and Linen pieces are cut from wood reclaimed from old Kerala homes, then joined by hand in our workshop in Salem. Decades of seasoning mean it won’t warp in the monsoon.', imageKey: story!.key, secondaryImageKey: wood.key } },
         { id: 'look', type: 'LOOK', data: { lookSlug: 'easy-living-room', eyebrow: 'Shop the room', title: 'An easy living room', subtitle: 'Tap a piece to see it, or add the whole look.' } },
         { id: 'bestsellers', type: 'PRODUCT_RAIL', data: { eyebrow: 'Most loved', title: 'Pieces people come back for', source: 'featured', limit: 8, href: '/shop' } },
-        { id: 'materials', type: 'MATERIALS', data: { eyebrow: 'Made properly', title: 'What it’s made of matters', items: [
-          { title: 'Seasoned solid wood', body: 'Teak, sheesham and oak, dried for months so joints stay tight through Indian summers and monsoons.', imageKey: wood.key },
-          { title: 'Fabrics that breathe', body: 'Linen and cotton blends tested to 50,000 rubs, with covers that come off for cleaning.', imageKey: linen.key },
-          { title: 'Joined by hand', body: 'Mortise-and-tenon joints and hand-tied springs from craftspeople with decades at the bench.', imageKey: hands.key },
-        ] } },
-        { id: 'promise', type: 'PROMISE', data: { items: [
-          { title: 'Delivery on your date', body: 'Choose a morning or afternoon slot once your order is confirmed.', icon: 'calendar' },
-          { title: 'Installed by our team', body: 'Furniture is assembled and placed, and the packaging taken away.', icon: 'wrench' },
-          { title: '7-day returns', body: 'If it isn’t right, we collect it and refund you after inspection.', icon: 'rotate' },
-          { title: 'Up to 5-year warranty', body: 'On frames, joints and mechanisms. Details on every product.', icon: 'shield' },
-        ] } },
+        materials,
+        promise,
         { id: 'reviews', type: 'REVIEWS', data: { eyebrow: 'In their homes', title: 'What customers say' } },
         { id: 'guides', type: 'GUIDES', data: { eyebrow: 'Buying guides', title: 'Choose with confidence', limit: 3 } },
-        { id: 'newsletter', type: 'NEWSLETTER', data: { title: 'New pieces, first', body: 'One email a month about new collections and the makers behind them. No sales spam.' } },
-      ] as unknown as Prisma.InputJsonValue,
+        newsletter,
+      ]) as unknown as Prisma.InputJsonValue,
     },
   });
 
@@ -883,7 +914,7 @@ A single generous sofa looks calmer than a sofa plus two armchairs crowded toget
 ## Light from three heights
 Combine a ceiling light, a floor or table lamp and a small accent light. Layered light makes a room feel deeper in the evening.`],
   ];
-  for (const [i, [slug, title, photo, excerpt, body]] of guides.entries()) {
+  for (const [i, [slug, title, photo, excerpt, body]] of (launch ? [] : guides).entries()) {
     const cover = await image(photo, title, `guide-${slug}`);
     await prisma.contentPage.create({
       data: { type: 'GUIDE', slug, title, excerpt, coverKey: cover.key, authorName: 'The SSS Furniture team', status: 'ACTIVE', publishedAt: new Date(Date.now() - (i + 1) * 9 * 86_400_000), blocks: md(body) as unknown as Prisma.InputJsonValue },
@@ -894,9 +925,11 @@ Combine a ceiling light, a floor or table lamp and a small accent light. Layered
     data: {
       location: 'footer',
       items: [
-        { title: 'Shop', links: [{ label: 'Sofas', href: '/shop/sofas' }, { label: 'Beds', href: '/shop/beds' }, { label: 'Tables', href: '/shop/tables' }, { label: 'Storage', href: '/shop/storage' }, { label: 'All rooms', href: '/rooms' }, { label: 'Collections', href: '/collections' }] },
+        launch
+          ? { title: 'Shop', links: [{ label: 'All furniture', href: '/shop' }, { label: 'Made to order', href: '/contact' }] }
+          : { title: 'Shop', links: [{ label: 'Sofas', href: '/shop/sofas' }, { label: 'Beds', href: '/shop/beds' }, { label: 'Tables', href: '/shop/tables' }, { label: 'Storage', href: '/shop/storage' }, { label: 'All rooms', href: '/rooms' }, { label: 'Collections', href: '/collections' }] },
         { title: 'Help', links: [{ label: 'Track your order', href: '/track' }, { label: 'Shipping and delivery', href: '/policies/shipping' }, { label: 'Returns and refunds', href: '/policies/returns' }, { label: 'Warranty', href: '/policies/warranty' }, { label: 'FAQ', href: '/faq' }, { label: 'Contact us', href: '/contact' }] },
-        { title: 'SSS Furniture', links: [{ label: 'About us', href: '/about' }, { label: 'Buying guides', href: '/guides' }, { label: 'Privacy policy', href: '/policies/privacy' }, { label: 'Terms of use', href: '/policies/terms' }, { label: 'Cancellation', href: '/policies/cancellation' }] },
+        { title: 'SSS Furniture', links: [{ label: 'About us', href: '/about' }, ...(launch ? [] : [{ label: 'Buying guides', href: '/guides' }]), { label: 'Privacy policy', href: '/policies/privacy' }, { label: 'Terms of use', href: '/policies/terms' }, { label: 'Cancellation', href: '/policies/cancellation' }] },
       ] as unknown as Prisma.InputJsonValue,
     },
   });

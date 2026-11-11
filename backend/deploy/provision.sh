@@ -124,7 +124,7 @@ done
 
 step "Media folders readable by Nginx"
 for target in prod dev; do
-  install -d -o "$DEPLOY_USER" -g "$DEPLOY_USER" "$BASE/$target/backend/storage/public" "$BASE/$target/backend/storage/private"
+  install -d -o "$DEPLOY_USER" -g "$DEPLOY_USER" "$BASE/$target/backend/storage" "$BASE/$target/backend/storage/public" "$BASE/$target/backend/storage/private"
   chmod o+x "$BASE/$target" "$BASE/$target/backend" "$BASE/$target/backend/storage"
   chmod -R o+rX "$BASE/$target/backend/storage/public"
   setfacl -R -m u:www-data:rX -m d:u:www-data:rX "$BASE/$target/backend/storage/private"
