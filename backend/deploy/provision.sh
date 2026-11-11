@@ -68,8 +68,8 @@ done
 step "Settings files"
 [ -n "$KEYS_FILE" ] && [ -f "$KEYS_FILE" ] && set -a && . "$KEYS_FILE" && set +a
 for target in prod dev; do
-  if [ "$target" = prod ]; then host=sssfurniture.co.in; admin=shopadmin.sssfurniture.co.in; api=4100; web=3100; db=sss_shop
-  else host=dev.sssfurniture.co.in; admin=devadmin.sssfurniture.co.in; api=4200; web=3200; db=sss_shop_dev; fi
+  if [ "$target" = prod ]; then host=sssfurniture.co.in; admin=prod-admin.sssfurniture.co.in; api=4100; web=3100; db=sss_shop
+  else host=dev.sssfurniture.co.in; admin=dev-admin.sssfurniture.co.in; api=4200; web=3200; db=sss_shop_dev; fi
   dir="$BASE/$target"
   install -d -o "$DEPLOY_USER" -g "$DEPLOY_USER" "$dir/backend" "$dir/storefront" "$dir/admin"
   if [ ! -f "$dir/backend/.env" ]; then

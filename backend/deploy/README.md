@@ -5,7 +5,7 @@ Hostinger KVM 2 (`189.72.149.180`, Ubuntu 26.04): 2 vCPU, 8 GB, 100 GB. Two copi
 | | **Live** (branch `prod`) | **Test** (branch `dev`) |
 | --- | --- | --- |
 | Storefront | https://sssfurniture.co.in | https://dev.sssfurniture.co.in |
-| Admin | https://shopadmin.sssfurniture.co.in | https://devadmin.sssfurniture.co.in |
+| Admin | https://prod-admin.sssfurniture.co.in | https://dev-admin.sssfurniture.co.in |
 | Folder | `/opt/sss-shop/prod` | `/opt/sss-shop/dev` |
 | Ports (API / storefront / admin) | 4100 / 3100 / 3101 | 4200 / 3200 / 3201 |
 | PM2 names | `prod-api` `prod-jobs` `prod-storefront` `prod-admin` | `dev-…` |
@@ -41,10 +41,10 @@ Until they exist, the workflow finishes with a "Deploy skipped" notice.
 
 ## DNS (Wix → Domains → sssfurniture.co.in → Manage DNS Records)
 
-A (Host) records, all `189.72.149.180`: `sssfurniture.co.in`, `www`, `dev`, `shopadmin`, `devadmin`. Delete the old Wix A record `185.230.63.186` for the bare domain, or half of visitors land on Wix. Then, on the server, add HTTPS for whichever names are ready:
+A (Host) records, all `189.72.149.180`: `sssfurniture.co.in`, `www`, `dev`, `prod-admin`, `dev-admin`. Delete the old Wix A record `185.230.63.186` for the bare domain, or half of visitors land on Wix. Then, on the server, add HTTPS for whichever names are ready:
 
 ```bash
-certbot --nginx -d sssfurniture.co.in -d www.sssfurniture.co.in -d shopadmin.sssfurniture.co.in -d dev.sssfurniture.co.in -d devadmin.sssfurniture.co.in
+certbot --nginx -d sssfurniture.co.in -d www.sssfurniture.co.in -d prod-admin.sssfurniture.co.in -d dev.sssfurniture.co.in -d dev-admin.sssfurniture.co.in
 ```
 
 ## Files in `backend/deploy/`
