@@ -7,6 +7,7 @@ import { config } from '../config';
 import { RateLimitService } from '../common/rate-limit';
 import { SessionService } from '../auth/session.service';
 import { SchedulingService } from '../delivery/scheduling.service';
+import { MediaImportsService } from '../media-imports/media-imports.service';
 import { MailService } from '../notifications/mail.service';
 import { OrderService } from '../orders/order.service';
 import { RazorpayService } from '../payments/razorpay.service';
@@ -27,6 +28,7 @@ export class JobsService {
     private readonly scheduling: SchedulingService,
     private readonly limits: RateLimitService,
     private readonly sessions: SessionService,
+    private readonly mediaImports: MediaImportsService,
   ) {}
 
   /** Prevents a slow run from overlapping the next one. */
@@ -45,6 +47,16 @@ export class JobsService {
   @Interval(10_000)
   sendEmails() {
     return this.once('emails', () => this.mail.flush());
+  }
+
+  /** Image imports: downloads or reads a few queued images at a time (queue lives in PostgreSQL). */
+  @Interval(5_000)
+  processMediaImports() {
+    return this.once('mediaImports', async () => {
+      // Keep going while there is work, but hand back control every 30 seconds.
+      const until = Date.now() + 30_000;
+      while (Date.now() < until && (await this.mediaImports.processDue(4)) > 0);
+    });
   }
 
   /** Online orders whose stock hold ran out. Checks Razorpay first, so a late payment is never lost. */

@@ -2,7 +2,7 @@
 
 import clsx from 'clsx';
 import {
-  BarChart3, Boxes, CalendarClock, ClipboardList, FileText, FolderTree, Gauge, Image as ImageIcon, KeyRound, LayoutTemplate, LogOut,
+  BarChart3, Boxes, CalendarClock, ClipboardList, FileText, FolderTree, Gauge, Image as ImageIcon, ImageDown, KeyRound, LayoutTemplate, LogOut,
   MapPin, Menu, MessageSquare, Package, Palette, Receipt, RotateCcw, ScrollText, Settings, Shapes, ShieldCheck, Sofa, Star, Tag, Truck, Users, Wallet, Warehouse, X,
 } from 'lucide-react';
 import Link from 'next/link';
@@ -36,6 +36,7 @@ const GROUPS: { title: string; items: Item[] }[] = [
       { href: '/looks', label: 'Looks', icon: MapPin, perm: 'catalog.read' },
       { href: '/catalog/library', label: 'Finishes and specs', icon: Palette, perm: 'catalog.read' },
       { href: '/media', label: 'Media library', icon: ImageIcon, perm: 'catalog.read' },
+      { href: '/media-imports', label: 'Image imports', icon: ImageDown, perm: 'media.write' },
     ],
   },
   {

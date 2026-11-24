@@ -40,6 +40,7 @@ export const RATE_LIMITS = {
   catalog: { limit: 300, window: 60 },
   admin: { limit: 600, window: 60 },
   adminUpload: { limit: 60, window: 3600 },
+  mediaImport: { limit: 30, window: 3600 },
   adminExport: { limit: 5, window: 3600 },
 } as const;
 

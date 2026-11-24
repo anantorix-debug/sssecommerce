@@ -117,8 +117,10 @@ let paymentMethodsBefore: { online: boolean; cod: boolean } | null = null;
 before(async () => {
   const health = await fetch(`${API}/health`).catch(() => null);
   assert.ok(health?.ok, `API is not running at ${API}. Start it with "npm run dev".`);
-  // Fresh counters for limits these tests exercise.
-  await prisma.rateLimit.deleteMany({ where: { OR: [{ key: { startsWith: 'otpRequest' } }, { key: { startsWith: 'loginIp' } }, { key: { startsWith: 'otpVerify' } }, { key: { startsWith: 'placeOrder' } }, { key: { startsWith: 'reviewSubmit' } }, { key: { startsWith: 'returnRequest' } }, { key: { startsWith: 'staffLogin' } }] } });
+  // Fresh counters for limits these tests exercise. One run makes ~20 pincode/cart calls from 127.0.0.1,
+  // so without resetting cart/pincode/catalog a second run inside the same minute hits 429 and fails.
+  const prefixes = ['otpRequest', 'loginIp', 'otpVerify', 'placeOrder', 'reviewSubmit', 'returnRequest', 'staffLogin', 'slotBooking', 'cart:', 'pincode:', 'catalog:', 'search:'];
+  await prisma.rateLimit.deleteMany({ where: { OR: prefixes.map((p) => ({ key: { startsWith: p } })) } });
   await ensureQaStaff();
   const admin = await staffClient();
   const s = (await admin.req('GET', '/admin/settings')).data;

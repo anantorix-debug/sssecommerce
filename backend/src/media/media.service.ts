@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { MediaVisibility } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
 import { existsSync } from 'node:fs';
-import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { dirname, join, normalize } from 'node:path';
 import sharp from 'sharp';
 import { config } from '../config';
@@ -40,7 +40,10 @@ export class MediaService {
     return full;
   }
 
-  async store(file: UploadFile, opts: { visibility?: MediaVisibility; alt?: string; maxImageMb?: number; allowVideo?: boolean; allowModel?: boolean } = {}) {
+  async store(
+    file: UploadFile,
+    opts: { visibility?: MediaVisibility; alt?: string; maxImageMb?: number; allowVideo?: boolean; allowModel?: boolean; format?: 'webp'; contentHash?: string } = {},
+  ) {
     const visibility = opts.visibility ?? 'PUBLIC';
     const now = new Date();
     const folder = `${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, '0')}`;
@@ -49,7 +52,7 @@ export class MediaService {
 
     if (IMAGE_TYPES.includes(file.mimetype)) {
       if (file.size > (opts.maxImageMb ?? 25) * MB) throw badRequest('FILE_TOO_LARGE', `Images can be up to ${opts.maxImageMb ?? 25} MB.`);
-      return this.storeImage(file, base, visibility, opts.alt);
+      return this.storeImage(file, base, visibility, opts.alt, opts.format, opts.contentHash);
     }
     if (VIDEO_TYPES.includes(file.mimetype) && opts.allowVideo) {
       if (file.size > 100 * MB) throw badRequest('FILE_TOO_LARGE', 'Videos can be up to 100 MB.');
@@ -67,7 +70,7 @@ export class MediaService {
     throw badRequest('FILE_TYPE_NOT_ALLOWED', 'This file type is not allowed. Use JPG, PNG, WebP or AVIF images' + (opts.allowVideo ? ', MP4 or WebM video' : '') + (opts.allowModel ? ', or GLB 3D models' : '') + '.');
   }
 
-  private async storeImage(file: UploadFile, base: string, visibility: MediaVisibility, alt?: string) {
+  private async storeImage(file: UploadFile, base: string, visibility: MediaVisibility, alt?: string, format?: 'webp', contentHash?: string) {
     let image = sharp(file.buffer, { failOn: 'error' });
     let meta;
     try {
@@ -78,9 +81,12 @@ export class MediaService {
     if (!meta.width || !meta.height) throw badRequest('IMAGE_INVALID', 'This file is not a valid image.');
     // Normalise: apply orientation, cap the long edge at 3,000 px, sRGB, and drop all metadata (EXIF, GPS).
     image = image.rotate().resize({ width: 3000, height: 3000, fit: 'inside', withoutEnlargement: true }).toColourspace('srgb');
-    const alpha = meta.hasAlpha;
-    const out = alpha ? await image.webp({ quality: 90 }).toBuffer({ resolveWithObject: true }) : await image.jpeg({ quality: 86, mozjpeg: true }).toBuffer({ resolveWithObject: true });
-    const key = `${base}.${alpha ? 'webp' : 'jpg'}`;
+    // Imports always become WebP; normal uploads keep JPEG for photos and WebP when there is transparency.
+    const webp = format === 'webp' || meta.hasAlpha;
+    const out = webp
+      ? await image.webp({ quality: meta.hasAlpha ? 90 : 84, effort: 5 }).toBuffer({ resolveWithObject: true })
+      : await image.jpeg({ quality: 86, mozjpeg: true }).toBuffer({ resolveWithObject: true });
+    const key = `${base}.${webp ? 'webp' : 'jpg'}`;
     await this.write(this.path(key, visibility), out.data);
     const tiny = await sharp(out.data).resize(24).blur(1.2).webp({ quality: 40 }).toBuffer();
     return this.prisma.mediaAsset.create({
@@ -88,12 +94,13 @@ export class MediaService {
         kind: 'IMAGE',
         visibility,
         storageKey: key,
-        mimeType: alpha ? 'image/webp' : 'image/jpeg',
+        mimeType: webp ? 'image/webp' : 'image/jpeg',
         width: out.info.width,
         height: out.info.height,
         bytes: out.data.length,
         altText: alt,
         placeholder: `data:image/webp;base64,${tiny.toString('base64')}`,
+        contentHash,
       },
     });
   }
@@ -114,6 +121,31 @@ export class MediaService {
       await rename(from, to);
     }
     await this.prisma.mediaAsset.update({ where: { id }, data: { deletedAt: new Date() } });
+  }
+
+  /** Moves a private file into public storage so the storefront can show it. */
+  async publish(id: string) {
+    const asset = await this.prisma.mediaAsset.findUnique({ where: { id } });
+    if (!asset) throw notFound('Media');
+    if (asset.visibility === 'PUBLIC') return asset;
+    const from = this.path(asset.storageKey, 'PRIVATE');
+    const to = this.path(asset.storageKey, 'PUBLIC');
+    await mkdir(dirname(to), { recursive: true });
+    await rename(from, to);
+    try {
+      return await this.prisma.mediaAsset.update({ where: { id }, data: { visibility: 'PUBLIC' } });
+    } catch (err) {
+      await rename(to, from).catch(() => undefined);
+      throw err;
+    }
+  }
+
+  async writePrivate(key: string, data: Buffer) {
+    await this.write(this.path(key, 'PRIVATE'), data);
+  }
+
+  async deletePrivate(key: string) {
+    await rm(this.path(key, 'PRIVATE'), { force: true });
   }
 
   async readPrivate(key: string) {

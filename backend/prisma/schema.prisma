@@ -171,7 +171,12 @@ model MediaAsset {
   focalY      Float           @default(0.5)
   deletedAt   DateTime?
   createdAt   DateTime        @default(now())
+  // SHA-256 of the original file, used to spot the same image imported twice.
+  contentHash String?
   products    ProductMedia[]
+  importItems MediaImportItem[]
+
+  @@index([contentHash])
 }
 
 model Category {
@@ -264,6 +269,7 @@ model Product {
   reviews              Review[]
   wishlistItems        WishlistItem[]
   hotspots             LookHotspot[]
+  mediaImportItems     MediaImportItem[]
 
   @@index([categoryId, status])
   @@index([name(ops: raw("gin_trgm_ops"))], type: Gin, map: "Product_name_trgm_idx")
@@ -997,4 +1003,85 @@ model RateLimit {
   expiresAt DateTime
 
   @@index([expiresAt])
+}
+
+// ── Image imports ──
+// Bulk image intake (CSV of image URLs, ZIP or manual upload). Every file is downloaded or
+// read into our own media storage, kept private until a staff member approves it, and only
+// then linked to the product. Background work is queued in these tables (no Redis).
+
+enum MediaImportSource {
+  CSV
+  ZIP
+  MANUAL
+}
+
+enum MediaImportJobStatus {
+  PROCESSING
+  REVIEW
+  COMPLETED
+  CANCELLED
+}
+
+enum MediaImportItemStatus {
+  PENDING
+  DOWNLOADING
+  READY
+  DUPLICATE
+  FAILED
+  APPROVED
+  REJECTED
+}
+
+model MediaImportJob {
+  id               String               @id @default(uuid())
+  name             String
+  source           MediaImportSource
+  status           MediaImportJobStatus @default(PROCESSING)
+  // Who granted the right to use these images, and the licence or permission details.
+  licenceSource    String
+  licenceNote      String
+  licenceConfirmed Boolean
+  createdById      String?
+  createdByEmail   String?
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+  finishedAt       DateTime?
+  items            MediaImportItem[]
+
+  @@index([createdAt])
+}
+
+model MediaImportItem {
+  id                 String                @id @default(uuid())
+  jobId              String
+  job                MediaImportJob        @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  rowNumber          Int
+  sku                String?
+  productId          String?
+  product            Product?              @relation(fields: [productId], references: [id], onDelete: SetNull)
+  sourceUrl          String?
+  fileName           String?
+  // ZIP and manual files wait here (private storage) until the worker processes them.
+  stagedKey          String?
+  role               MediaRole             @default(GALLERY)
+  position           Int?
+  altText            String?
+  status             MediaImportItemStatus @default(PENDING)
+  attempts           Int                   @default(0)
+  nextAttemptAt      DateTime?
+  lastError          String?
+  contentHash        String?
+  mediaId            String?
+  media              MediaAsset?           @relation(fields: [mediaId], references: [id], onDelete: SetNull)
+  // Set when the same image already exists; approving links that asset instead of a copy.
+  duplicateOfMediaId String?
+  reviewedByEmail    String?
+  reviewedAt         DateTime?
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
+
+  @@index([jobId])
+  @@index([status, nextAttemptAt])
+  @@index([contentHash])
 }

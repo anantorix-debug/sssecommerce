@@ -29,6 +29,8 @@ import { InventoryService } from './inventory/inventory.service';
 import { InvoiceService } from './invoices/invoice.service';
 import { JobsService } from './jobs/jobs.service';
 import { MediaService } from './media/media.service';
+import { AdminMediaImportsController } from './media-imports/admin-media-imports.controller';
+import { MediaImportsService } from './media-imports/media-imports.service';
 import { MailService } from './notifications/mail.service';
 import { CustomerOrdersController } from './orders/customer-orders.controller';
 import { OrderService } from './orders/order.service';
@@ -76,6 +78,7 @@ export const SERVICES = [
   ContentService,
   RevalidateService,
   JobsService,
+  MediaImportsService,
 ];
 
 @Module({
@@ -93,6 +96,7 @@ export const SERVICES = [
     AdminAuthController,
     AdminCatalogController,
     AdminMediaInventoryController,
+    AdminMediaImportsController,
     AdminOrdersController,
     AdminOpsController,
     AdminSystemController,

@@ -42,6 +42,10 @@ const schema = z.object({
   REVALIDATE_URL: z.string().default(''),
   INTERNAL_SECRET: z.string().min(16, 'INTERNAL_SECRET must be at least 16 characters.'),
   STAFF_2FA_REQUIRED: bool(true),
+  // Image imports. Comma-separated hosts images may be downloaded from (empty = any public host).
+  MEDIA_IMPORT_ALLOWED_HOSTS: z.string().default(''),
+  // Development and tests only: allow downloads from this machine. Always off in production.
+  MEDIA_IMPORT_ALLOW_PRIVATE: bool(false),
 });
 
 const parsed = schema.safeParse(process.env);
@@ -96,6 +100,8 @@ export const config = {
   googleEnabled: Boolean(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET),
   googleRedirectUri: env.GOOGLE_REDIRECT_URI || `${env.STOREFRONT_URL}/api/store/auth/google/callback`,
   mailEnabled: Boolean(env.SMTP_HOST),
+  mediaImportAllowedHosts: env.MEDIA_IMPORT_ALLOWED_HOSTS.split(',').map((h) => h.trim().toLowerCase()).filter(Boolean),
+  mediaImportAllowPrivate: env.MEDIA_IMPORT_ALLOW_PRIVATE && env.NODE_ENV !== 'production',
 };
 
 export type AppConfig = typeof config;
